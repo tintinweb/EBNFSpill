@@ -83,7 +83,7 @@ class Tdef(object):
     
     def toName(self):
         r = {}
-        for defname in [x for x in dir(self) if x.startswith("_MATCH")]:
+        for defname in [x for x in dir(self) if x.startswith("MATCH_")]:
             r[getattr(self,defname)]=defname
         return r
 
@@ -107,7 +107,11 @@ class EBNFSpill(object):
         self.table =  self.parser.buildTagger(production=production)
     
     def setTable(self,table):
+        self._reset()
         self.table = table
+    
+    def _reset(self):
+        self.nodes = {}
         
     def setDefaults(self,**kwargs):
         valid_defaults = [i for i in dir(self) if i.startswith("DEFAULT_")]
@@ -118,7 +122,6 @@ class EBNFSpill(object):
                 raise Exception("Not allowed to change %s to %s (valid options: %s)"%(k,v,valid_defaults))
     
     def getTable(self):
-        self.nodes = {}
         return self.table
 
     def getTagName(self,node):
@@ -223,7 +226,7 @@ class EBNFSpill(object):
         
         return self.getTagName(node)
 
-    def generate(self,node):
+    def generate(self,node=None):
         out = ""
         for n in self.walk(node):
             out+= self.eval(n)
@@ -280,7 +283,9 @@ class EBNFSpill(object):
         table=table or self.table
         if not table: raise Exception("EBNF TagTable not set, please generate [.setDeclaration()] or set one [.setTable()]")       #must not be !NONE!, please .setDeclaration() first!
         
-        return self._walk(table)
+        retn =  self._walk(table)
+        self._reset()
+        return retn
 
     def _walk(self,l):
         # check if (None|basestring, int, ... ) > 2

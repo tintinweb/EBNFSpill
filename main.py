@@ -1,3 +1,4 @@
+'''
 declaration = """
 file           := content*
 
@@ -19,7 +20,7 @@ word           := ([a-zA-Z0-9-_()/\~.<>?;:])+
 anychar        := ([a-zA-Z0-9-_()/\~.<>?;: \t])+
 ts             := [ \t]*
 """
-
+'''
 declaration = """
 file              := (section, entry+, '\n\n')+
 
@@ -31,33 +32,31 @@ alphanumspecial   := [a-zA-Z0-9_-]
 word              := alpha,alphanum*
 wordspecial       := alpha,alphanumspecial*
 """
-
-dseclaration = """
+'''
+declaration = """
 file              :=  'n',file+
 """
+'''
 from EBNFSpill import EBNFSpill
 from pprint import pprint
 
-#b = BNFSpill(declaration,production="file")
-#table = b.getTable()
+
 b = EBNFSpill(showTags=False)
 b.setDeclaration(declaration,production="file")
-table = b.getTable()
-#pprint (table)
 
-print b.generate(table)
-#exit()
-exit()
-#b = BNFSpill(declaration,production="file")
+print "----------[ #1 prettyprint AST ]----------"
 table = b.getTable()
+pprint (table)
 
-import time
+print "----------[ #2 Generate Random Data ]----------"
+# generate random Data
+print b.generate()
+
+# walk parsing / evaluation process
+print "----------[ #3 walk / eval AST ]----------"
 x= 0        
-for i in b.walk(table):
+for i in b.walk():
     x+=1
-    #time.sleep(0.5)
-
     print x,id(i),b.process(i)
 
 
-exit()
