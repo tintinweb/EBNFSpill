@@ -51,6 +51,7 @@ EBNFSpill Example #1 - Generate Random Data that meets the syntax requirements
 EBNFSpill will now take any EBNF defintion that is valid and will try to create random data that matches the described syntax. For the above EBNF declaration this would be random data like this:
 
 Code:
+
 	declaration = """
 	file              := (section, entry+, '\n\n')+
 	
@@ -68,6 +69,7 @@ Code:
 	s.setDeclaration(declaration,production="file")	
 	# lets generate some random data
 	print b.generate()
+	
 Output:
 
 	[JaW-I]
@@ -113,7 +115,7 @@ EBNFSpill Example #2 - show prettyprint of AST-Table, Step-by-Step walk the AST 
 =======================
 
 Code:
-Code:
+
 	declaration = """
 	file              := (section, entry+, '\n\n')+
 	
