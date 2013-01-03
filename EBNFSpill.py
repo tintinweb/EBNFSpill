@@ -310,7 +310,7 @@ class EBNFSpill(object):
        
             elif self.checkTypeIterableRecursive(l):
                 nID=id(l[0][0])
-                raise StopRecursionException(('<RECURSION of Node=%s>'%nID,Tdef.MATCH_RECURSION,nID))
+                raise StopRecursionException(('[RECURSION of Node=%s]'%nID,Tdef.MATCH_RECURSION,nID))
                     
             elif self.checkTypeIterable(l):
                 #print "list"
