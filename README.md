@@ -5,7 +5,7 @@ EBNFSpill
 * Validate EBNF definition (simpleparse's part)
 * Validate some data against EBNF (simpleparse's part)
 
-EBNF-Parser: simpleparse
+EBNF-Parser: simpleparse (EBNF-Grammars: http://simpleparse.sourceforge.net/simpleparse_grammars.html)
 
 EBNF-Description
 =======

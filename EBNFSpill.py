@@ -19,7 +19,8 @@ class StopRecursionException(Exception):
     
 class Tdef(object):
     # special one :)
-    MATCH_RECURSION = 0xFEED0       #custom
+    MATCH_RECURSION = 0xFEED0           #custom
+    MATCH_RECURSION_EXCEPTION = 0xFEED1 #custom
 
     # taken from mxTextTools.h
     MATCH_ALLIN = 11
@@ -91,27 +92,42 @@ import random
 import collections
 
 class EBNFSpill(object):
-    DEFAULT_MAX_TIMES_CHAR = 25
-    DEFAULT_MAX_TIMES_FUNC = 5
+    DEFAULT_MAX_TIMES_CHAR = 35
+    DEFAULT_MAX_TIMES_FUNC = 10
+    DEFAULT_MAX_SELF_RECURSION = 25
+    DEFAULT_MAX_WALK_RECURSION = 100
 
-    def __init__(self,showTags=False,showTagsRecursive=False):
-        self.nodes = {}
-        self.ctx = []       # context (infos like recurion for table2)
+    def __init__(self,showTags=False,showTagsRecursive=False,recursionLevel=0):
+        self._reset()
         self.showTags=showTags
         self.showTagsRecursive=showTagsRecursive
-        random.seed()
+        self.recursionLevelObj=recursionLevel
+        
+        if self.recursionLevelObj>self.DEFAULT_MAX_SELF_RECURSION: raise Exception("a")
+        #print "INIT",recursionLevel
         pass
+    
+    def __del__(self):
+        self.recursionLevelObj-=1
+        pass
+    
+    def validate(self,data):
+        return self.parser.parse(data)
     
     def setDeclaration(self,declaration,production):
         self.parser = Parser(declaration, production)
         self.table =  self.parser.buildTagger(production=production)
     
-    def setTable(self,table):
-        self._reset()
+    def setTable(self,table,nodes=None):
         self.table = table
+        self.nodes=nodes or self.nodes
     
     def _reset(self):
         self.nodes = {}
+        self.ctx = []       # context (infos like recurion for table2)
+        #self.recursionLevelObj=0
+        self.recursionLevelWalk=0
+        random.seed()
         
     def setDefaults(self,**kwargs):
         valid_defaults = [i for i in dir(self) if i.startswith("DEFAULT_")]
@@ -178,18 +194,35 @@ class EBNFSpill(object):
         # different lenght commandos
         #print node
         #print id(node),node
+        #if self.recursionLevelObj>self.DEFAULT_MAX_SELF_RECURSION or self.recursionLevelWalk>self.DEFAULT_MAX_WALK_RECURSION:
+        #    return "<recursion_exception>"
+        
+        if not node:
+            return ""
+        
         if len(node)<3:
-            raise Exception( "<3" )          #this is an error!
+            raise Exception( "<3 - %s"%repr(node) )          #this is an error!
+        
+        elif node[1]==Tdef.MATCH_RECURSION_EXCEPTION:
+            return "<<"
         
         elif node[1]==Tdef.MATCH_RECURSION:
             # create a new EBNFSpill object, and resolv this one?
             #print node[2],self.nodes[node[2]]
-            x = EBNFSpill(showTags=self.showTagsRecursive)
-            x.setTable(self.table)
-            #print "REKR",self.nodes[node[2]]
+            self.recursionLevelObj+=1
+            try:
+                x = EBNFSpill(showTags=self.showTagsRecursive,recursionLevel=self.recursionLevelObj)
+                x.setTable(self.table)
+                recr_node=self.nodes[node[2]]
+            except:
+                return ""
+            
+            #
+            #print "REKR",node
+            #print "REKR2",self.nodes
             #print "<DAMN_RECURSION %s wild=%s>"%(node[2],self.ctx)
             #return "<RECURSION"
-            recr_node=self.nodes[node[2]]
+            
             #print "EXCEPT:",node[2],self.nodes
             #return self.rndTimes(x.generate(recr_node['obj']), 0, 3)
             return self.getTagName(node)+x.generate(recr_node)
@@ -218,9 +251,15 @@ class EBNFSpill(object):
             elif node[1]>=Tdef.MATCH_CALL and node[1]<=Tdef.MATCH_SUBTABLEINLIST:
                 # (xyz,MATCH_TABLE, <table>, 1)  == exact 1
                 # (xyz,MATCH_TABLE, <table>, 2,1)  == *
-                x = EBNFSpill(showTags=self.showTagsRecursive)
+                self.recursionLevelObj+=1
+                try:
+                    x = EBNFSpill(showTags=self.showTagsRecursive,recursionLevel=self.recursionLevelObj)
+                except:
+                    return ""
                 x.setTable(self.table)
                 #print "<TABLE: %s | %s  || %s || nodeid:%s>"%(node[0:1],node[3],self.ctx,id(node[3]))
+                #print node[2]
+                #return self.getTagName(node)+""
                 return self.getTagName(node)+self.rndTimesFunc(x.generate,(node[2]))            
         
         
@@ -229,7 +268,11 @@ class EBNFSpill(object):
     def generate(self,node=None):
         out = ""
         for n in self.walk(node):
+            #print n
+            #print self.recursionLevelObj,self.recursionLevelWalk
+
             out+= self.eval(n)
+
         return out
 
     def process(self,l):
@@ -250,7 +293,6 @@ class EBNFSpill(object):
     
     def _trackNode(self,node,nodeID=None):
         nID = nodeID or id(node)
-        
         #print node
         if self.checkTypeNodeBase(node):
             #print "ISIN1",Tdef.MATCH_CALL,Tdef.MATCH_SUBTABLEINLIST,node[1],node[1]>=Tdef.MATCH_CALL and node[1]<=Tdef.MATCH_SUBTABLEINLIST
@@ -292,8 +334,24 @@ class EBNFSpill(object):
         #import time
         #time.sleep(0.8)
         #print "BEGIN",str(l)[:50]
-        try:
-            
+        #recursion check
+        if self.recursionLevelObj>self.DEFAULT_MAX_SELF_RECURSION or self.recursionLevelWalk>self.DEFAULT_MAX_WALK_RECURSION:
+            #print self.recursionLevelWalk
+            #print self.recursionLevelObj
+            #nID=
+            #raise StopRecursionException(('[RECURSION of Node=%s]'%nID,Tdef.MATCH_RECURSION,nID))
+            #print self.nodes
+            #yield l
+            #print "StopIter",l
+            #print self.recursionLevelObj,self.recursionLevelWalk
+            raise StopIteration("HMM")
+            #yield (None,Tdef.MATCH_RECURSION_EXCEPTION,())
+            #raise StopRecursionException(("[RECURSION_EXCEPTION_LEVEL_REACHED]",Tdef.MATCH_RECURSION_EXCEPTION,None))
+        self.recursionLevelWalk+=1
+        #print id(l),len(l),l
+        
+
+        try:  
             if self.checkTypeNodeWithChilds(l):
                 #print "Childs"
                 self._checkRecursion(l)
@@ -309,7 +367,12 @@ class EBNFSpill(object):
                 yield self._trackNode(l)
        
             elif self.checkTypeIterableRecursive(l):
+                #print "xxx",l[0][0]
                 nID=id(l[0][0])
+                #print "IterReck"
+                #print '[RECURSION of Node=%s]'%nID
+                #TODO: does not work
+                #fixme: does not work - recurses too much
                 raise StopRecursionException(('[RECURSION of Node=%s]'%nID,Tdef.MATCH_RECURSION,nID))
                     
             elif self.checkTypeIterable(l):
@@ -331,8 +394,11 @@ class EBNFSpill(object):
         
         except StopRecursionException, e:
             #print self.nodes[e.getObj()[2]]
+            #print "Except:",e.getObj()
             yield e.getObj()
+
     
+        self.recursionLevelWalk-=1
 
 
          
