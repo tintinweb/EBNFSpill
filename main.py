@@ -41,6 +41,16 @@ a    := [a-z]
 b    := [A-Z]
 """
 
+declaration = """
+file        := func_head+
+func_head   := type, " ", name, " ", "(",arg,(', ',arg)+,")","{\n",body,"\n}\n"
+type        := "void"
+name        := word+
+arg         := type, " " , word+
+body        := "int ",word+,";","\n","return 0;"
+word         := [a-zA-Z]
+"""
+
 from EBNFSpill import EBNFSpill
 from pprint import pprint
 
